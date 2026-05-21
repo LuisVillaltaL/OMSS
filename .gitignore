@@ -1,3 +1,16 @@
-echo "node_modules/" >> .gitignore
-echo ".env" >> .gitignore
-echo "uploads/" >> .gitignore
+# RUTA: .gitignore
+
+# Entorno y credenciales de desarrollo (¡Crítico!)
+.env
+.env.local
+.env.development.local
+
+# Dependencias instaladas (pesan demasiado y no deben subirse)
+node_modules/
+dist/
+build/
+
+# Archivos temporales del sistema operativos o editores
+.DS_Store
+Thumbs.db
+.vscode/
