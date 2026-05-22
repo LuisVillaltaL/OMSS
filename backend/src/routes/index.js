@@ -1,24 +1,14 @@
+// 📁 RUTA: backend/src/routes/index.js
 const router = require('express').Router();
 
-// ── Rutas disponibles ──────────────────────────────────────────
 router.use('/auth',    require('./authRoutes'));
+router.use('/tickets', require('./ticketsRoutes'));
+router.use('/activos', require('./activos'));
+// router.use('/usuarios',  require('./usuariosRoutes'));
+// router.use('/dashboard', require('./dashboardRoutes'));
 
-// Los siguientes se irán agregando módulo por módulo:
-// router.use('/tickets',       require('./ticketsRoutes'));
-// router.use('/activos',       require('./activosRoutes'));
-// router.use('/usuarios',      require('./usuariosRoutes'));
-// router.use('/dashboard',     require('./dashboardRoutes'));
-// router.use('/notificaciones',require('./notificacionesRoutes'));
-// router.use('/auditoria',     require('./auditoriaRoutes'));
-
-// ── Health check ───────────────────────────────────────────────
 router.get('/health', (req, res) => {
-  res.json({
-    status:    'ok',
-    timestamp: new Date().toISOString(),
-    version:   '1.0.0',
-    servicio:  'ITSM API — Sistema de Gestión de Incidentes de TI',
-  });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
 });
 
 module.exports = router;

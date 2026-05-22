@@ -53,6 +53,9 @@ app.use((req, res) => {
       'POST /api/auth/refresh',
       'POST /api/auth/logout',
       'GET  /api/auth/me',
+      'GET   /api/activos',            // ◄── Agregado para control visual
+      'GET   /api/activos/formularios', // ◄── Agregado para control visual
+      'POST  /api/activos',
     ],
   });
 });
