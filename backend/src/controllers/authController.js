@@ -24,7 +24,7 @@ const login = async (req, res, next) => {
     // Buscar usuario
     const { rows } = await pool.query(
       `SELECT id, nombre, apellido, correo, password_hash, rol, perfil,
-              intentos_fallidos, bloqueado_hasta, activo
+              intentos_fallidos, bloqueado_hasta, activo, modulos_permitidos
        FROM usuarios
        WHERE correo = $1`,
       [correo]
@@ -64,7 +64,7 @@ const login = async (req, res, next) => {
         `UPDATE usuarios
          SET intentos_fallidos = $1, bloqueado_hasta = $2
          WHERE id = $3`,
-        [intentos, bloquear, user.id]
+         [intentos, bloquear, user.id]
       );
 
       return res.status(401).json({
@@ -89,6 +89,7 @@ const login = async (req, res, next) => {
       rol:     user.rol,
       perfil:  user.perfil,
       nombre:  `${user.nombre} ${user.apellido}`,
+      modulos_permitidos: user.modulos_permitidos,
     };
 
     const accessToken  = jwt.sign(payload, jwtSecret,  { expiresIn: jwtExpiry });
@@ -121,6 +122,7 @@ const login = async (req, res, next) => {
         correo:  user.correo,
         rol:     user.rol,
         perfil:  user.perfil,
+        modulos_permitidos: user.modulos_permitidos,
       },
     });
   } catch (err) {
@@ -147,7 +149,7 @@ const refresh = async (req, res, next) => {
     // Verificar en BD que no esté revocado
     const { rows } = await pool.query(
       `SELECT s.id, s.revocada, u.id AS uid, u.correo, u.rol,
-              u.perfil, u.nombre, u.apellido, u.activo
+              u.perfil, u.nombre, u.apellido, u.activo, u.modulos_permitidos
        FROM sesiones s
        JOIN usuarios u ON s.usuario_id = u.id
        WHERE s.refresh_token = $1 AND s.expira_en > NOW()`,
@@ -161,7 +163,7 @@ const refresh = async (req, res, next) => {
     const u = rows[0];
     const newAccess = jwt.sign(
       { id: u.uid, correo: u.correo, rol: u.rol, perfil: u.perfil,
-        nombre: `${u.nombre} ${u.apellido}` },
+        nombre: `${u.nombre} ${u.apellido}`, modulos_permitidos: u.modulos_permitidos },
       jwtSecret,
       { expiresIn: jwtExpiry }
     );
@@ -195,7 +197,7 @@ const me = async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT u.id, u.nombre, u.apellido, u.correo, u.rol, u.perfil,
-              u.ultimo_login, u.creado_en, d.nombre AS departamento
+              u.ultimo_login, u.creado_en, d.nombre AS departamento, u.modulos_permitidos
        FROM usuarios u
        LEFT JOIN departamentos d ON u.departamento_id = d.id
        WHERE u.id = $1`,

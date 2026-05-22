@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { PriorityBadge, StatusBadge, SlaBar } from '../components/ui/Badges';
 import { useTickets, useTicket, useCatalogo } from '../hooks/useTickets';
@@ -7,6 +7,95 @@ import { crearTicket } from '../api/tickets';
 import { useAuth } from '../context/AuthContext';
 
 const ACCENT = '#3C50E0';
+
+// ── ICONOS SVG NATIVOS DE TRAZO FINO (strokeWidth = 1.5/2) ──
+function TicketIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-12v.75m0 3v.75m0 3v.75m0 3V18M3 6.75A2.25 2.25 0 0 1 5.25 4.5h13.5A2.25 2.25 0 0 1 21 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 17.25V6.75Z" />
+    </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.6-3.36 1.814-1.813a1.5 1.5 0 0 0-1.06-2.557H4.5A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 16.5v-3.75" />
+    </svg>
+  );
+}
+
+function BoltIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m3.75 13.5 10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75Z" />
+    </svg>
+  );
+}
+
+function ChannelIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.068.157 2.148.279 3.238.364.466.037.893.281 1.153.671L12 21l2.652-3.978c.26-.39.687-.634 1.153-.67 1.09-.086 2.17-.208 3.238-.365 1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+    </svg>
+  );
+}
+
+function DeviceIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25" />
+    </svg>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.83 20.013a4.5 4.5 0 0 1-1.897 1.13l-3.93.985a.75.75 0 0 1-.902-.902l.985-3.93a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+    </svg>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>
+  );
+}
+
+function SyncIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+    </svg>
+  );
+}
+
+function CloseIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function AlertWarningIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-red-600 flex-shrink-0">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+    </svg>
+  );
+}
 
 function formatFecha(iso) {
   if (!iso) return '—';
@@ -27,7 +116,7 @@ function tiempoRelativo(iso) {
   return `hace ${Math.floor(h / 24)}d`;
 }
 
-// ── Modal nuevo ticket ─────────────────────────────────────────
+// ── Modal nuevo ticket (REDISEÑO PREMIUM) ─────────────────────────
 function NuevoTicketModal({ onClose, onCreado }) {
   const { user } = useAuth();
   const { catalogo } = useCatalogo();
@@ -49,7 +138,7 @@ function NuevoTicketModal({ onClose, onCreado }) {
   const submit = async e => {
     e.preventDefault();
     if (!form.titulo.trim() || !form.categoria_id || !form.reportado_por) {
-      setError('Título, categoría y usuario afectado son obligatorios');
+      setError('Título, categoría y usuario afectado son campos obligatorios');
       return;
     }
     setLoading(true);
@@ -64,128 +153,248 @@ function NuevoTicketModal({ onClose, onCreado }) {
       onCreado(r);
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al crear el ticket');
+      setError(err.response?.data?.error || 'Error al crear el ticket de soporte');
     } finally {
       setLoading(false);
     }
   };
 
-  const inp = 'w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-500 focus:bg-white transition-colors';
-  const lbl = 'block text-xs font-semibold text-slate-600 mb-1';
+  const inp = 'w-full bg-slate-50/40 border border-slate-200/80 rounded-xl pl-9 pr-3 py-2.5 text-xs text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all shadow-sm';
+  const lbl = 'block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1';
+  const sectionTitle = 'text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5 border-b border-slate-100 pb-1.5';
 
   return (
     <div
-      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-fade-in"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-bold text-slate-800">Nuevo Ticket de Incidente</h2>
+      <div className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl font-sans border border-slate-100 animate-scale-up">
+        
+        {/* Encabezado */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/20">
+          <div>
+            <h2 className="text-sm font-bold text-slate-800">Nuevo Ticket de Incidente</h2>
+            <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Registra un nuevo incidente o solicitud de servicio bajo ITIL 4</p>
+          </div>
           <button
+            type="button"
             onClick={onClose}
-            className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 text-sm"
+            className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors"
           >
-            ✕
+            <CloseIcon />
           </button>
         </div>
 
-        <form onSubmit={submit} className="px-6 py-5 space-y-4">
+        <form onSubmit={submit} className="px-6 py-5 space-y-5">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
-              ⚠ {error}
+            <div className="bg-red-50 border border-red-150 rounded-xl p-3.5 flex items-center gap-2.5 text-xs text-red-700 font-medium animate-shake">
+              <AlertWarningIcon />
+              <span>{error}</span>
             </div>
           )}
 
-          <div>
-            <label className={lbl}>Título <span className="text-red-500">*</span></label>
-            <input name="titulo" value={form.titulo} onChange={handle}
-              className={inp} placeholder="Describe brevemente el problema..." />
-          </div>
+          {/* 1. Información del Incidente */}
+          <div className="border border-slate-100 bg-slate-50/10 rounded-2xl p-4 shadow-sm space-y-4">
+            <h3 className={sectionTitle}>
+              <span className="p-1 rounded-lg bg-blue-50 text-blue-600"><TicketIcon /></span>
+              Información del Incidente
+            </h3>
 
-          <div>
-            <label className={lbl}>Descripción</label>
-            <textarea name="descripcion" value={form.descripcion} onChange={handle}
-              className={inp + ' resize-none h-20'}
-              placeholder="Pasos para reproducir, impacto, mensajes de error..." />
-          </div>
+            <div>
+              <label className={lbl}>Título del Incidente <span className="text-red-500">*</span></label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                  <PencilIcon />
+                </span>
+                <input
+                  name="titulo"
+                  value={form.titulo}
+                  onChange={handle}
+                  className={inp}
+                  placeholder="Ej: No se puede acceder a la base de datos de producción..."
+                  required
+                />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className={lbl}>Categoría <span className="text-red-500">*</span></label>
-              <select name="categoria_id" value={form.categoria_id} onChange={handle} className={inp}>
-                <option value="">— Seleccionar —</option>
-                {catalogo.categorias.map(c => (
-                  <option key={c.id} value={c.id}>{c.nombre}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={lbl}>Subcategoría</label>
-              <select name="subcategoria_id" value={form.subcategoria_id} onChange={handle} className={inp}>
-                <option value="">— Seleccionar —</option>
-                {subcat.map(s => (
-                  <option key={s.id} value={s.id}>{s.nombre}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Prioridad <span className="text-red-500">*</span></label>
-              <select name="prioridad" value={form.prioridad} onChange={handle} className={inp}>
-                <option value="critico">Crítico</option>
-                <option value="alto">Alto</option>
-                <option value="medio">Medio</option>
-                <option value="bajo">Bajo</option>
-              </select>
-            </div>
-            <div>
-              <label className={lbl}>Canal</label>
-              <select name="canal" value={form.canal} onChange={handle} className={inp}>
-                <option value="portal_web">Portal web</option>
-                <option value="correo">Correo</option>
-                <option value="telefono">Teléfono</option>
-              </select>
+              <label className={lbl}>Descripción Detallada</label>
+              <textarea
+                name="descripcion"
+                value={form.descripcion}
+                onChange={handle}
+                className="w-full bg-slate-50/40 border border-slate-200/80 rounded-xl px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all shadow-sm resize-none h-20"
+                placeholder="Pasos para reproducir, impacto operativo, mensajes de error..."
+              />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={lbl}>Asignar a</label>
-              <select name="asignado_a" value={form.asignado_a} onChange={handle} className={inp}>
-                <option value="">— Auto-asignar —</option>
-                {catalogo.tecnicos.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.nombre} ({t.perfil || 'admin'})
-                  </option>
-                ))}
-              </select>
+          {/* 2. Categorización y Prioridad */}
+          <div className="border border-slate-100 bg-slate-50/10 rounded-2xl p-4 shadow-sm space-y-4">
+            <h3 className={sectionTitle}>
+              <span className="p-1 rounded-lg bg-orange-50 text-orange-600"><FolderIcon /></span>
+              Categorización y Prioridad
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={lbl}>Categoría <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                    <FolderIcon />
+                  </span>
+                  <select
+                    name="categoria_id"
+                    value={form.categoria_id}
+                    onChange={handle}
+                    className={inp + ' cursor-pointer'}
+                    required
+                  >
+                    <option value="">- Seleccionar categoría -</option>
+                    {catalogo.categorias.map(c => (
+                      <option key={c.id} value={c.id}>{c.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={lbl}>Subcategoría</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                    <FolderIcon />
+                  </span>
+                  <select
+                    name="subcategoria_id"
+                    value={form.subcategoria_id}
+                    onChange={handle}
+                    className={inp + ' cursor-pointer'}
+                  >
+                    <option value="">- Seleccionar subcategoría -</option>
+                    {subcat.map(s => (
+                      <option key={s.id} value={s.id}>{s.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className={lbl}>Activo relacionado</label>
-              <select name="activo_id" value={form.activo_id} onChange={handle} className={inp}>
-                <option value="">— Ninguno —</option>
-                {catalogo.activos.map(a => (
-                  <option key={a.id} value={a.id}>{a.codigo} — {a.nombre}</option>
-                ))}
-              </select>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={lbl}>Prioridad (Impacto y Urgencia) <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                    <BoltIcon />
+                  </span>
+                  <select
+                    name="prioridad"
+                    value={form.prioridad}
+                    onChange={handle}
+                    className={inp + ' cursor-pointer'}
+                    required
+                  >
+                    <option value="critico">Crítico (Bloqueo Total)</option>
+                    <option value="alto">Alto (Interrupción Parcial)</option>
+                    <option value="medio">Medio (Operación Lenta)</option>
+                    <option value="bajo">Bajo (Consulta/General)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={lbl}>Canal de Entrada</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                    <ChannelIcon />
+                  </span>
+                  <select
+                    name="canal"
+                    value={form.canal}
+                    onChange={handle}
+                    className={inp + ' cursor-pointer'}
+                  >
+                    <option value="portal_web">Portal Web</option>
+                    <option value="correo">Correo Electrónico</option>
+                    <option value="telefono">Teléfono de Soporte</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Soporte y Recursos Relacionados */}
+          <div className="border border-slate-100 bg-slate-50/10 rounded-2xl p-4 shadow-sm space-y-4">
+            <h3 className={sectionTitle}>
+              <span className="p-1 rounded-lg bg-indigo-50 text-indigo-600"><UserIcon /></span>
+              Soporte y Recursos Relacionados
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={lbl}>Asignar a (Técnico)</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                    <UserIcon />
+                  </span>
+                  <select
+                    name="asignado_a"
+                    value={form.asignado_a}
+                    onChange={handle}
+                    className={inp + ' cursor-pointer'}
+                  >
+                    <option value="">- Auto-asignar según SLA -</option>
+                    {catalogo.tecnicos.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.nombre} ({t.perfil || 'Soporte General'})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={lbl}>Activo Relacionado (CMDB)</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                    <DeviceIcon />
+                  </span>
+                  <select
+                    name="activo_id"
+                    value={form.activo_id}
+                    onChange={handle}
+                    className={inp + ' cursor-pointer'}
+                  >
+                    <option value="">- Ninguno -</option>
+                    {catalogo.activos.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.codigo} - {a.nombre}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 
           <div className="flex gap-3 pt-2">
             <button
-              type="button" onClick={onClose}
+              type="button"
+              onClick={onClose}
               className="flex-1 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
             >
               Cancelar
             </button>
             <button
-              type="submit" disabled={loading}
-              className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-all disabled:opacity-60 hover:opacity-90"
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white transition-all disabled:opacity-60 hover:opacity-90 shadow-md flex items-center justify-center gap-1.5"
               style={{ background: ACCENT }}
             >
-              {loading ? 'Creando...' : 'Crear Ticket'}
+              {loading ? 'Creando...' : (
+                <>
+                  <PlusIcon /> Crear Ticket de Incidente
+                </>
+              )}
             </button>
           </div>
         </form>
@@ -243,9 +452,9 @@ function DetailPanel({ ticketId, onClose }) {
         ))}
         <button
           onClick={onClose}
-          className="ml-auto w-7 h-7 my-auto rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 text-xs"
+          className="ml-auto w-8 h-8 my-auto rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 text-xs transition-colors"
         >
-          ✕
+          <CloseIcon />
         </button>
       </div>
 
@@ -266,20 +475,53 @@ function DetailPanel({ ticketId, onClose }) {
 
             {/* SLA */}
             {ticket.sla_estado && (
-              <div className={`rounded-lg p-3 border text-xs ${ticket.sla_estado === 'vencido' ? 'bg-red-50 border-red-200' :
-                ticket.sla_estado === 'en_riesgo' ? 'bg-amber-50 border-amber-200' :
-                  ticket.sla_estado === 'pausado' ? 'bg-slate-50 border-slate-200' :
-                    'bg-emerald-50 border-emerald-200'
+              <div className={`rounded-xl p-3.5 border text-xs shadow-sm flex items-center justify-between transition-all ${
+                ticket.sla_estado === 'vencido' ? 'bg-red-50/50 border-red-200/60 text-red-800' :
+                ticket.sla_estado === 'en_riesgo' ? 'bg-amber-50/50 border-amber-200/60 text-amber-800' :
+                ticket.sla_estado === 'pausado' ? 'bg-slate-50/60 border-slate-200/60 text-slate-700' :
+                'bg-emerald-50/50 border-emerald-200/60 text-emerald-800'
+              }`}>
+                <div>
+                  <div className="flex items-center gap-2 font-bold mb-1">
+                    <span className="relative flex h-2 w-2">
+                      {ticket.sla_estado !== 'pausado' && (
+                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                          ticket.sla_estado === 'vencido' ? 'bg-red-400' :
+                          ticket.sla_estado === 'en_riesgo' ? 'bg-amber-400' : 'bg-emerald-400'
+                        }`}></span>
+                      )}
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                        ticket.sla_estado === 'vencido' ? 'bg-red-500' :
+                        ticket.sla_estado === 'en_riesgo' ? 'bg-amber-500' :
+                        ticket.sla_estado === 'pausado' ? 'bg-slate-400' : 'bg-emerald-500'
+                      }`}></span>
+                    </span>
+                    <span className="uppercase tracking-wider text-[10px]">
+                      {ticket.sla_estado === 'vencido' ? 'SLA Vencido' :
+                       ticket.sla_estado === 'en_riesgo' ? 'SLA En riesgo' :
+                       ticket.sla_estado === 'pausado' ? 'SLA Pausado' : 'SLA En tiempo'}
+                    </span>
+                  </div>
+                  {ticket.sla_vence_en && (
+                    <p className="text-[11px] text-slate-500 font-medium">Vence: {formatFecha(ticket.sla_vence_en)}</p>
+                  )}
+                </div>
+                <div className={`p-1.5 rounded-lg border ${
+                  ticket.sla_estado === 'vencido' ? 'bg-red-100/40 border-red-200/40 text-red-600' :
+                  ticket.sla_estado === 'en_riesgo' ? 'bg-amber-100/40 border-amber-200/40 text-amber-600' :
+                  ticket.sla_estado === 'pausado' ? 'bg-slate-100/60 border-slate-200/60 text-slate-500' :
+                  'bg-emerald-100/40 border-emerald-200/40 text-emerald-600'
                 }`}>
-                <p className="font-bold mb-1">
-                  {ticket.sla_estado === 'vencido' ? '🔴 SLA Vencido' :
-                    ticket.sla_estado === 'en_riesgo' ? '🟡 En riesgo' :
-                      ticket.sla_estado === 'pausado' ? '⏸ Pausado' :
-                        '🟢 En tiempo'}
-                </p>
-                {ticket.sla_vence_en && (
-                  <p className="text-slate-500">Vence: {formatFecha(ticket.sla_vence_en)}</p>
-                )}
+                  {ticket.sla_estado === 'pausado' ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                    </svg>
+                  )}
+                </div>
               </div>
             )}
 
@@ -442,6 +684,15 @@ export default function TicketsPage() {
     filters, cambiarFiltro, cambiarPagina, recargar,
   } = useTickets();
 
+  const [searchParams] = useSearchParams();
+  const qParam = searchParams.get('q');
+
+  useEffect(() => {
+    if (qParam !== null) {
+      cambiarFiltro('q', qParam);
+    }
+  }, [qParam, cambiarFiltro]);
+
   const [selectedId, setSelectedId] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
@@ -466,23 +717,23 @@ export default function TicketsPage() {
               <div>
                 <h1 className="text-base font-bold text-slate-800">Gestión de Tickets</h1>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Inicio → <span style={{ color: ACCENT }}>Tickets</span>
+                  Inicio &rarr; <span style={{ color: ACCENT }}>Tickets</span>
                 </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={recargar}
-                  className="text-xs text-slate-500 bg-white border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  className="text-xs text-slate-500 bg-white border border-slate-200 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-sm"
                 >
-                  ↻ Actualizar
+                  <SyncIcon /> Actualizar
                 </button>
                 {['admin', 'tecnico_l1', 'tecnico_l2'].includes(user?.rol) && (
                   <button
                     onClick={() => setShowModal(true)}
-                    className="text-xs font-bold text-white px-4 py-2 rounded-lg transition-all hover:opacity-90"
+                    className="text-xs font-bold text-white px-4 py-2 rounded-lg transition-all hover:opacity-90 flex items-center gap-1.5 shadow-sm"
                     style={{ background: ACCENT }}
                   >
-                    + Nuevo Ticket
+                    <PlusIcon /> Nuevo Ticket
                   </button>
                 )}
               </div>
@@ -533,8 +784,9 @@ export default function TicketsPage() {
 
             {/* Error */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-xs text-red-700">
-                ⚠ {error}
+              <div className="bg-red-50 border border-red-150 rounded-xl p-4 flex items-center gap-2.5 text-xs text-red-700 font-medium animate-shake">
+                <AlertWarningIcon />
+                <span>{error}</span>
               </div>
             )}
 
@@ -570,11 +822,11 @@ export default function TicketsPage() {
                           <p className="text-xs font-medium text-slate-500">No hay incidentes registrados con los filtros aplicados</p>
                           <button
                             onClick={() => setShowModal(true)}
-                            className="mt-3 text-xs font-semibold hover:underline"
+                            className="mt-3 text-xs font-semibold hover:underline flex items-center gap-1.5 mx-auto transition-all hover:opacity-80"
                             style={{ color: ACCENT }}
                           >
-                            + Crear el primer ticket
-                          </button> {/* ◄── Removido el ')}' que estaba aquí colapsando la estructura */}
+                            <PlusIcon /> Crear el primer ticket
+                          </button>
                         </td>
                       </tr>
                     )}
@@ -624,23 +876,23 @@ export default function TicketsPage() {
               {/* Paginación */}
               {total > filters.limit && (
                 <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100">
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-slate-400 font-medium">
                     Página {filters.page} de {Math.ceil(total / filters.limit)}
                   </span>
                   <div className="flex gap-2">
                     <button
                       disabled={filters.page <= 1}
                       onClick={() => cambiarPagina(filters.page - 1)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 transition-colors"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 transition-all flex items-center gap-1"
                     >
-                      ← Anterior
+                      <ChevronLeftIcon /> Anterior
                     </button>
                     <button
                       disabled={filters.page >= Math.ceil(total / filters.limit)}
                       onClick={() => cambiarPagina(filters.page + 1)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 transition-colors"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 transition-all flex items-center gap-1"
                     >
-                      Siguiente →
+                      Siguiente <ChevronRightIcon />
                     </button>
                   </div>
                 </div>
