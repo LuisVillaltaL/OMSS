@@ -1,136 +1,102 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './pages/Login';
+import Login   from './pages/Login';
+import Tickets from './pages/Tickets';
+import Activos from './pages/Activos'; // ◄── Importación de la CMDB que creamos
 
-
-// ── Componente de ruta protegida ──────────────────────────────
 function PrivateRoute({ children, roles = [] }) {
   const { user } = useAuth();
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (roles.length > 0 && !roles.includes(user.rol)) {
-    return <Navigate to="/unauthorized" replace />;
-  }
-
+  if (!user) return <Navigate to="/login" replace />;
+  if (roles.length && !roles.includes(user.rol)) return <Navigate to="/unauthorized" replace />;
   return children;
 }
 
-// ── Placeholder Dashboard (hasta que construyamos el módulo) ───
+// ── EL COMPONENTE INTERMEDIO RÚSTICO Y DE ALTO CONTRASTE ──
 function DashboardPlaceholder() {
   const { user, logout } = useAuth();
+  
+  // Estilo común para mantener los botones rústicos y cuadradotes
+  const btnStyle = {
+    padding: '12px 16px',
+    borderRadius: '8px',
+    background: '#3C50E0',
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: '12px',
+    textDecoration: 'none',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '6px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'transform 0.1s'
+  };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', maxWidth: '480px', width: '100%', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #E2E8F0' }}>
-
-        {/* Éxito */}
-        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#D1FAE5', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="#059669" style={{ width: '26px', height: '26px' }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
+    <div style={{ minHeight: '100vh', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', maxWidth: '500px', width: '100%', border: '1px solid #E2E8F0', textAlign: 'center', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)' }}>
+        <p style={{ fontSize: '48px', margin: '0 0 16px' }}>⚙️</p>
+        <h2 style={{ color: '#1C2434', margin: '0 0 4px', fontSize: '20px', fontFamily: 'sans-serif' }}>Control Center — S.L.A. System</h2>
+        <p style={{ color: '#64748B', fontSize: '13px', margin: '0 0 24px' }}>Usuario: {user?.nombre} | Rol: {user?.rol}</p>
+        
+        {/* Cuadrícula de accesos con íconos bien tradicionales */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+          <a href="/tickets" style={btnStyle}>
+            <span style={{ fontSize: '20px' }}>🎫</span>
+            Ir a Tickets
+          </a>
+          <a href="/activos" style={btnStyle}>
+            <span style={{ fontSize: '20px' }}>💻</span>
+            Activos TI
+          </a>
+          <button onClick={() => alert('Módulo de empleados en desarrollo...')} style={btnStyle}>
+            <span style={{ fontSize: '20px' }}>👥</span>
+            Empleados
+          </button>
+          <button onClick={() => alert('Módulo de reportes en desarrollo...')} style={btnStyle}>
+            <span style={{ fontSize: '20px' }}>📊</span>
+            Reportes
+          </button>
         </div>
 
-        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#1C2434', marginBottom: '8px' }}>
-          Login exitoso
-        </h2>
-        <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '20px' }}>
-          Conectado correctamente al backend y a PostgreSQL
-        </p>
-
-        {/* Info del usuario */}
-        <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '16px', marginBottom: '20px' }}>
-          <p style={{ fontSize: '11px', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>
-            Usuario autenticado
-          </p>
-          {[
-            ['Nombre',  user?.nombre],
-            ['Correo',  user?.correo],
-            ['Rol',     user?.rol],
-            ['Perfil',  user?.perfil || '—'],
-          ].map(([key, val]) => (
-            <div key={key} style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '6px', marginBottom: '6px', borderBottom: '1px solid #F1F5F9' }}>
-              <span style={{ fontSize: '12px', color: '#64748B' }}>{key}</span>
-              <span style={{ fontSize: '12px', fontWeight: '600', color: '#1C2434' }}>{val}</span>
-            </div>
-          ))}
+        <div style={{ borderTop: '1px solid #E2E8F0', paddingTop: '16px' }}>
+          <button onClick={logout} style={{ padding: '10px 24px', borderRadius: '8px', background: '#1C2434', color: '#fff', fontWeight: '700', fontSize: '12px', border: 'none', cursor: 'pointer', width: '100%' }}>
+            ❌ Cerrar sesión del sistema
+          </button>
         </div>
-
-        {/* JWT en localStorage */}
-        <div style={{ background: '#EEF2FF', border: '1px solid #C7D2FE', borderRadius: '10px', padding: '14px', marginBottom: '20px' }}>
-          <p style={{ fontSize: '11px', fontWeight: '700', color: '#3730A3', marginBottom: '6px' }}>
-            JWT almacenado en localStorage
-          </p>
-          <p style={{ fontSize: '10px', color: '#4338CA', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-            {localStorage.getItem('accessToken')?.slice(0, 60)}...
-          </p>
-        </div>
-
-        <button
-          onClick={logout}
-          style={{ width: '100%', padding: '10px', borderRadius: '10px', background: '#1C2434', color: '#fff', fontWeight: '700', fontSize: '14px', border: 'none', cursor: 'pointer' }}
-        >
-          Cerrar sesión
-        </button>
       </div>
     </div>
   );
 }
 
-// ── 401 Unauthorized ──────────────────────────────────────────
-function Unauthorized() {
-  return (
-    <div style={{ minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center', background:'#F1F5F9' }}>
-      <div style={{ textAlign:'center' }}>
-        <p style={{ fontSize:'48px', margin:0 }}>🔒</p>
-        <h2 style={{ color:'#1C2434', marginTop:'8px' }}>Sin permisos</h2>
-        <p style={{ color:'#64748B', fontSize:'14px' }}>Tu rol no tiene acceso a esta sección</p>
-        <a href="/dashboard" style={{ color:'#3C50E0', fontSize:'13px', fontWeight:'600' }}>
-          ← Ir al inicio
-        </a>
-      </div>
-    </div>
-  );
-}
-
-// ── App ────────────────────────────────────────────────────────
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Ruta raíz → login */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-
-          {/* Pública */}
+          <Route path="/"      element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
-
-          {/* Protegidas */}
-          <Route path="/dashboard" element={
-            <PrivateRoute>
-              <DashboardPlaceholder />
-            </PrivateRoute>
-          } />
-
-          {/* Tickets — solo técnicos y admin */}
+          <Route path="/unauthorized" element={<div style={{textAlign:'center',padding:'60px'}}>Sin permisos 🔒</div>} />
+          
+          {/* El despachador de entrada */}
+          <Route path="/dashboard" element={<PrivateRoute><DashboardPlaceholder /></PrivateRoute>} />
+          
+          {/* Módulo de Tickets Premium */}
           <Route path="/tickets" element={
             <PrivateRoute roles={['admin','tecnico_l1','tecnico_l2']}>
-              <DashboardPlaceholder />
+              <Tickets />
             </PrivateRoute>
           } />
 
-          {/* Mis tickets — usuario final */}
-          <Route path="/mis-tickets" element={
-            <PrivateRoute roles={['usuario_final']}>
-              <DashboardPlaceholder />
+          {/* Módulo de Activos Premium (Conectado para evitar el cierre de sesión) */}
+          <Route path="/activos" element={
+            <PrivateRoute roles={['admin','tecnico_l1','tecnico_l2']}>
+              <Activos />
             </PrivateRoute>
           } />
 
-          {/* 404 */}
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
