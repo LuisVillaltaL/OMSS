@@ -75,6 +75,14 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(true);
+  const [expandedMenus, setExpandedMenus] = useState({});
+
+  const toggleExpand = (menuKey) => {
+    setExpandedMenus(prev => ({
+      ...prev,
+      [menuKey]: !prev[menuKey]
+    }));
+  };
 
   const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
@@ -113,16 +121,33 @@ export default function Layout({ children }) {
 
   // Generar dinámicamente el listado de navegación
   const menuItems = [];
-  menuItems.push({ path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> });
+  if (user?.rol !== 'usuario_final') {
+    menuItems.push({ path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> });
+  }
 
   const permitidos = user?.modulos_permitidos || [];
 
-  if (permitidos.includes('tickets')) {
-    menuItems.push({ path: '/tickets', label: 'Tickets', icon: <TicketsIcon /> });
+  if (permitidos.includes('tickets') || user?.rol === 'usuario_final') {
+    const isFinal = user?.rol === 'usuario_final';
+    menuItems.push({
+      path: isFinal ? '/mis-tickets' : '/tickets',
+      label: isFinal ? 'Mis Tickets' : 'Tickets',
+      icon: <TicketsIcon />
+    });
   }
+
   if (permitidos.includes('activos')) {
-    menuItems.push({ path: '/activos', label: 'Activos TI', icon: <ActivosIcon /> });
+    menuItems.push({
+      label: 'Activos TI',
+      icon: <ActivosIcon />,
+      key: 'activos',
+      children: [
+        { path: '/activos?tab=hardware', label: 'Equipos (Hardware)' },
+        { path: '/activos?tab=software', label: 'Licencias (Software)' }
+      ]
+    });
   }
+
   if (permitidos.includes('empleados')) {
     menuItems.push({ path: '/empleados', label: 'Empleados', icon: <EmpleadosIcon /> });
   }
@@ -183,21 +208,103 @@ export default function Layout({ children }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-2 py-3 space-y-1 overflow-y-auto">
           {open && (
             <p className="text-slate-500 text-xs font-semibold uppercase tracking-widest px-2 mb-2">
               Principal
             </p>
           )}
-          {menuItems.map(({ path, label, icon }) => {
+          {menuItems.map((item) => {
+            if (item.children) {
+              const isChildActive = item.children.some(child => 
+                location.pathname + location.search === child.path ||
+                (child.path.includes('?') && location.pathname === child.path.split('?')[0] && (location.search === '?' + child.path.split('?')[1] || (child.path.endsWith('tab=hardware') && !location.search)))
+              );
+              const isExpanded = expandedMenus[item.key] !== undefined ? expandedMenus[item.key] : isChildActive;
+
+              return (
+                <div key={item.key} className="space-y-1">
+                  {/* Botón Principal del Grupo */}
+                  <button
+                    onClick={() => {
+                      if (!open) setOpen(true);
+                      toggleExpand(item.key);
+                    }}
+                    title={!open ? item.label : undefined}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors"
+                    style={{
+                      color: isChildActive ? '#fff' : '#94A3B8',
+                      background: 'transparent',
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = '#313D4A';
+                      e.currentTarget.style.color = '#fff';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = isChildActive ? '#fff' : '#94A3B8';
+                    }}
+                  >
+                    <span className="flex-shrink-0" style={{ color: isChildActive ? '#fff' : '#8A99AD' }}>{item.icon}</span>
+                    {open && <span className="flex-1 text-left">{item.label}</span>}
+                    {open && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2.5}
+                        stroke="currentColor"
+                        className={`w-3 h-3 transition-transform duration-200 text-slate-500 ${isExpanded ? 'rotate-180' : ''}`}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    )}
+                  </button>
+
+                  {/* Elementos Hijos Desplegables */}
+                  {open && isExpanded && (
+                    <div className="pl-9 pr-2 space-y-1 animate-fade-in">
+                      {item.children.map(child => {
+                        const active =
+                          location.pathname + location.search === child.path ||
+                          (child.path.includes('?') && location.pathname === child.path.split('?')[0] && (location.search === '?' + child.path.split('?')[1] || (child.path.endsWith('tab=hardware') && !location.search)));
+                        
+                        return (
+                          <button
+                            key={child.path}
+                            onClick={() => navigate(child.path)}
+                            className="w-full flex items-center py-1.5 px-3 rounded-lg text-[11px] font-medium transition-colors text-left"
+                            style={{
+                              color: active ? '#fff' : '#8A99AD',
+                              background: active ? '#3C50E0' : 'transparent',
+                              boxShadow: active ? '0 2px 8px rgba(60,80,224,.2)' : 'none',
+                            }}
+                            onMouseEnter={e => {
+                              if (!active) { e.currentTarget.style.color = '#fff'; }
+                            }}
+                            onMouseLeave={e => {
+                              if (!active) { e.currentTarget.style.color = '#8A99AD'; }
+                            }}
+                          >
+                            {child.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Renderizado Normal de un Elemento sin Hijos
             const active =
-              location.pathname === path ||
-              (path !== '/dashboard' && location.pathname.startsWith(path));
+              location.pathname === item.path ||
+              (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
             return (
               <button
-                key={path}
-                onClick={() => navigate(path)}
-                title={!open ? label : undefined}
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                title={!open ? item.label : undefined}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-xs font-medium transition-colors"
                 style={{
                   background: active ? '#3C50E0' : 'transparent',
@@ -211,8 +318,8 @@ export default function Layout({ children }) {
                   if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94A3B8'; }
                 }}
               >
-                <span className="flex-shrink-0" style={{ color: active ? '#fff' : '#8A99AD' }}>{icon}</span>
-                {open && <span className="flex-1 text-left">{label}</span>}
+                <span className="flex-shrink-0" style={{ color: active ? '#fff' : '#8A99AD' }}>{item.icon}</span>
+                {open && <span className="flex-1 text-left">{item.label}</span>}
               </button>
             );
           })}

@@ -152,10 +152,19 @@ const crear = async (req, res, next) => {
     // Cifrar contraseña con bcrypt
     const passwordHash = await bcrypt.hash(password, 10);
 
+    let defaultModulos = [];
+    if (rol === 'admin') {
+      defaultModulos = ['tickets', 'activos', 'empleados', 'compras', 'ventas'];
+    } else if (rol === 'tecnico_l1' || rol === 'tecnico_l2') {
+      defaultModulos = ['tickets', 'activos'];
+    } else if (rol === 'usuario_final') {
+      defaultModulos = ['tickets'];
+    }
+
     const sql = `
-      INSERT INTO usuarios (nombre, apellido, correo, password_hash, rol, perfil, departamento_id, activo)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, nombre, apellido, correo, rol, perfil, departamento_id, activo, creado_en
+      INSERT INTO usuarios (nombre, apellido, correo, password_hash, rol, perfil, departamento_id, activo, modulos_permitidos)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, nombre, apellido, correo, rol, perfil, departamento_id, activo, modulos_permitidos, creado_en
     `;
 
     const finalPerfil = ['tecnico_l1', 'tecnico_l2'].includes(rol)
@@ -170,7 +179,8 @@ const crear = async (req, res, next) => {
       rol,
       finalPerfil,
       departamento_id || null,
-      activo
+      activo,
+      defaultModulos
     ]);
 
     const nuevoUsuario = insertRes.rows[0];

@@ -123,7 +123,7 @@ function NuevoTicketModal({ onClose, onCreado }) {
   const [form, setForm] = useState({
     titulo: '', descripcion: '', prioridad: 'medio',
     canal: 'portal_web', categoria_id: '', subcategoria_id: '',
-    reportado_por: user?.id || '', asignado_a: '', activo_id: '',
+    reportado_por: user?.id || '', asignado_a: '', activo_id: '', imagen: null
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -133,6 +133,21 @@ function NuevoTicketModal({ onClose, onCreado }) {
   const handle = e => {
     const { name, value } = e.target;
     setForm(p => ({ ...p, [name]: value }));
+  };
+
+  const handleFileChange = e => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('La imagen no puede pesar más de 10 MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setForm(p => ({ ...p, imagen: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const submit = async e => {
@@ -174,7 +189,7 @@ function NuevoTicketModal({ onClose, onCreado }) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/20">
           <div>
             <h2 className="text-sm font-bold text-slate-800">Nuevo Ticket de Incidente</h2>
-            <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Registra un nuevo incidente o solicitud de servicio bajo ITIL 4</p>
+            <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Registra un nuevo incidente o solicitud de servicio</p>
           </div>
           <button
             type="button"
@@ -226,6 +241,45 @@ function NuevoTicketModal({ onClose, onCreado }) {
                 className="w-full bg-slate-50/40 border border-slate-200/80 rounded-xl px-3 py-2.5 text-xs text-slate-700 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all shadow-sm resize-none h-20"
                 placeholder="Pasos para reproducir, impacto operativo, mensajes de error..."
               />
+            </div>
+
+            <div>
+              <label className={lbl}>Adjuntar Imagen de Evidencia</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="evidence-image-upload"
+                />
+                <label
+                  htmlFor="evidence-image-upload"
+                  className="flex items-center gap-1.5 px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-slate-500">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 0 0 1.5-1.5V6a1.5 1.5 0 0 0-1.5-1.5H3.75A1.5 1.5 0 0 0 2.25 6v12a1.5 1.5 0 0 0 1.5 1.5Zm10.5-11.25h.008v.008h-.008V8.25Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                  </svg>
+                  {form.imagen ? 'Cambiar Imagen' : 'Seleccionar Imagen'}
+                </label>
+                {form.imagen && (
+                  <div className="relative border border-slate-200 rounded-xl overflow-hidden bg-slate-50 flex items-center p-1 gap-2 max-w-[250px]">
+                    <img
+                      src={form.imagen}
+                      alt="Vista previa"
+                      className="w-8 h-8 object-cover rounded-lg"
+                    />
+                    <span className="text-[10px] text-slate-500 truncate flex-1 font-semibold">Evidencia seleccionada</span>
+                    <button
+                      type="button"
+                      onClick={() => setForm(p => ({ ...p, imagen: null }))}
+                      className="text-red-500 hover:text-red-700 font-bold text-xs px-1"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -280,7 +334,7 @@ function NuevoTicketModal({ onClose, onCreado }) {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
+              <div className={user?.rol === 'usuario_final' ? 'col-span-1 sm:col-span-2' : ''}>
                 <label className={lbl}>Prioridad (Impacto y Urgencia) <span className="text-red-500">*</span></label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
@@ -301,80 +355,84 @@ function NuevoTicketModal({ onClose, onCreado }) {
                 </div>
               </div>
 
-              <div>
-                <label className={lbl}>Canal de Entrada</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                    <ChannelIcon />
-                  </span>
-                  <select
-                    name="canal"
-                    value={form.canal}
-                    onChange={handle}
-                    className={inp + ' cursor-pointer'}
-                  >
-                    <option value="portal_web">Portal Web</option>
-                    <option value="correo">Correo Electrónico</option>
-                    <option value="telefono">Teléfono de Soporte</option>
-                  </select>
+              {user?.rol !== 'usuario_final' && (
+                <div>
+                  <label className={lbl}>Canal de Entrada</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                      <ChannelIcon />
+                    </span>
+                    <select
+                      name="canal"
+                      value={form.canal}
+                      onChange={handle}
+                      className={inp + ' cursor-pointer'}
+                    >
+                      <option value="portal_web">Portal Web</option>
+                      <option value="correo">Correo Electrónico</option>
+                      <option value="telefono">Teléfono de Soporte</option>
+                    </select>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
           {/* 3. Soporte y Recursos Relacionados */}
-          <div className="border border-slate-100 bg-slate-50/10 rounded-2xl p-4 shadow-sm space-y-4">
-            <h3 className={sectionTitle}>
-              <span className="p-1 rounded-lg bg-indigo-50 text-indigo-600"><UserIcon /></span>
-              Soporte y Recursos Relacionados
-            </h3>
+          {user?.rol !== 'usuario_final' && (
+            <div className="border border-slate-100 bg-slate-50/10 rounded-2xl p-4 shadow-sm space-y-4">
+              <h3 className={sectionTitle}>
+                <span className="p-1 rounded-lg bg-indigo-50 text-indigo-600"><UserIcon /></span>
+                Soporte y Recursos Relacionados
+              </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className={lbl}>Asignar a (Técnico)</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                    <UserIcon />
-                  </span>
-                  <select
-                    name="asignado_a"
-                    value={form.asignado_a}
-                    onChange={handle}
-                    className={inp + ' cursor-pointer'}
-                  >
-                    <option value="">- Auto-asignar según SLA -</option>
-                    {catalogo.tecnicos.map(t => (
-                      <option key={t.id} value={t.id}>
-                        {t.nombre} ({t.perfil || 'Soporte General'})
-                      </option>
-                    ))}
-                  </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className={lbl}>Asignar a (Técnico)</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                      <UserIcon />
+                    </span>
+                    <select
+                      name="asignado_a"
+                      value={form.asignado_a}
+                      onChange={handle}
+                      className={inp + ' cursor-pointer'}
+                    >
+                      <option value="">- Auto-asignar según SLA -</option>
+                      {catalogo.tecnicos.map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.nombre} ({t.perfil || 'Soporte General'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className={lbl}>Activo Relacionado (CMDB)</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
-                    <DeviceIcon />
-                  </span>
-                  <select
-                    name="activo_id"
-                    value={form.activo_id}
-                    onChange={handle}
-                    className={inp + ' cursor-pointer'}
-                  >
-                    <option value="">- Ninguno -</option>
-                    {catalogo.activos.map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.codigo} - {a.nombre}
-                      </option>
-                    ))}
-                  </select>
+                <div>
+                  <label className={lbl}>Activo Relacionado (CMDB)</label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 pointer-events-none">
+                      <DeviceIcon />
+                    </span>
+                    <select
+                      name="activo_id"
+                      value={form.activo_id}
+                      onChange={handle}
+                      className={inp + ' cursor-pointer'}
+                    >
+                      <option value="">- Ninguno -</option>
+                      {catalogo.activos.map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.codigo} - {a.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div className="flex gap-3 pt-2">
             <button
@@ -405,7 +463,9 @@ function NuevoTicketModal({ onClose, onCreado }) {
 
 // ── Panel lateral de detalle ───────────────────────────────────
 function DetailPanel({ ticketId, onClose }) {
+  const { user } = useAuth();
   const { ticket, loading, actualizar, nuevaNota } = useTicket(ticketId);
+  const { catalogo } = useCatalogo();
   const [nota, setNota] = useState('');
   const [savingN, setSavingN] = useState(false);
   const [tab, setTab] = useState('detalle');
@@ -529,7 +589,32 @@ function DetailPanel({ ticketId, onClose }) {
             {[
               ['Prioridad', <PriorityBadge priority={ticket.prioridad} />],
               ['Estado', <StatusBadge status={ticket.estado} />],
-              ['Asignado a', ticket.asignado_a_nombre || '—'],
+              ['Asignado a', ['admin', 'tecnico_l1', 'tecnico_l2'].includes(user?.rol) ? (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <select
+                    value={ticket.asignado_a || ''}
+                    onChange={e => actualizar({ asignado_a: e.target.value || null })}
+                    className="text-xs bg-slate-50/50 border border-slate-200 rounded-lg px-2 py-1 outline-none cursor-pointer flex-1"
+                  >
+                    <option value="">- Sin asignar -</option>
+                    {catalogo?.tecnicos?.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.nombre}
+                      </option>
+                    ))}
+                  </select>
+                  {ticket.asignado_a !== user?.id && (
+                    <button
+                      onClick={() => actualizar({ asignado_a: user?.id })}
+                      className="px-2 py-1 bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 hover:text-blue-700 rounded-lg text-[10px] font-bold transition-all whitespace-nowrap shadow-sm"
+                    >
+                      Asignarme
+                    </button>
+                  )}
+                </div>
+              ) : (
+                ticket.asignado_a_nombre || '—'
+              )],
               ['Reportado por', ticket.reportado_por_nombre || '—'],
               ['Categoría', ticket.categoria || '—'],
               ['Activo', ticket.activo_codigo
@@ -555,23 +640,62 @@ function DetailPanel({ ticketId, onClose }) {
               </div>
             )}
 
-            {/* Cambiar estado */}
-            <div>
-              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">
-                Cambiar estado
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {ESTADOS.filter(e => e !== ticket.estado).map(e => (
-                  <button
-                    key={e}
-                    onClick={() => actualizar({ estado: e })}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors capitalize"
-                  >
-                    {e.replace('_', ' ')}
-                  </button>
-                ))}
+            {/* Adjuntos (Imágenes) */}
+            {ticket.adjuntos && ticket.adjuntos.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">
+                  Imágenes / Adjuntos
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {ticket.adjuntos.map(adj => {
+                    const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+                    const imageUrl = `${BASE_URL}/${adj.ruta}`;
+                    return (
+                      <a
+                        key={adj.id}
+                        href={imageUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="border border-slate-200 rounded-lg overflow-hidden block hover:border-blue-400 transition-colors bg-slate-50"
+                      >
+                        {adj.mime_type && adj.mime_type.startsWith('image/') ? (
+                          <img
+                            src={imageUrl}
+                            alt={adj.nombre}
+                            className="w-full h-24 object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-24 flex items-center justify-center text-slate-400">
+                            <span className="text-[10px] font-semibold">Archivo</span>
+                          </div>
+                        )}
+                        <p className="text-[9px] text-slate-500 p-1 truncate text-center font-medium">{adj.nombre}</p>
+                      </a>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Cambiar estado */}
+            {user?.rol !== 'usuario_final' && (
+              <div>
+                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-2">
+                  Cambiar estado
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ESTADOS.filter(e => e !== ticket.estado).map(e => (
+                    <button
+                      key={e}
+                      onClick={() => actualizar({ estado: e })}
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors capitalize"
+                    >
+                      {e.replace('_', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -655,23 +779,44 @@ function DetailPanel({ ticketId, onClose }) {
       </div>
 
       {/* Acciones footer */}
-      <div className="px-3 py-3 border-t border-slate-100 flex gap-2 flex-shrink-0">
-        <button
-          onClick={() => actualizar({ estado: 'escalado' })}
-          className="flex-1 py-2 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-        >
-          Escalar
-        </button>
-        <button
-          onClick={() => actualizar({
-            estado: ['resuelto', 'cerrado'].includes(ticket.estado) ? 'abierto' : 'resuelto'
-          })}
-          className="flex-1 py-2 rounded-lg text-xs font-bold text-white transition-opacity hover:opacity-90"
-          style={{ background: ACCENT }}
-        >
-          {['resuelto', 'cerrado'].includes(ticket.estado) ? 'Reabrir' : 'Resolver'}
-        </button>
-      </div>
+      {user?.rol !== 'usuario_final' ? (
+        <div className="px-3 py-3 border-t border-slate-100 flex gap-2 flex-shrink-0">
+          <button
+            onClick={() => actualizar({ estado: 'escalado' })}
+            className="flex-1 py-2 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+          >
+            Escalar
+          </button>
+          <button
+            onClick={() => actualizar({
+              estado: ['resuelto', 'cerrado'].includes(ticket.estado) ? 'abierto' : 'resuelto'
+            })}
+            className="flex-1 py-2 rounded-lg text-xs font-bold text-white transition-opacity hover:opacity-90"
+            style={{ background: ACCENT }}
+          >
+            {['resuelto', 'cerrado'].includes(ticket.estado) ? 'Reabrir' : 'Resolver'}
+          </button>
+        </div>
+      ) : (
+        ['resuelto', 'cerrado'].includes(ticket.estado) && (
+          <div className="px-3 py-3 border-t border-slate-100 flex gap-2 flex-shrink-0">
+            <button
+              onClick={() => actualizar({ estado: 'abierto' })}
+              className="flex-1 py-2 rounded-lg text-xs font-bold text-white transition-opacity hover:opacity-90 bg-amber-600 hover:bg-amber-700"
+            >
+              Reabrir Ticket
+            </button>
+            {ticket.estado === 'resuelto' && (
+              <button
+                onClick={() => actualizar({ estado: 'cerrado' })}
+                className="flex-1 py-2 rounded-lg text-xs font-bold text-white transition-opacity hover:opacity-90 bg-emerald-600 hover:bg-emerald-700"
+              >
+                Cerrar Ticket
+              </button>
+            )}
+          </div>
+        )
+      )}
     </div>
   );
 }
@@ -727,7 +872,7 @@ export default function TicketsPage() {
                 >
                   <SyncIcon /> Actualizar
                 </button>
-                {['admin', 'tecnico_l1', 'tecnico_l2'].includes(user?.rol) && (
+                {['admin', 'tecnico_l1', 'tecnico_l2', 'usuario_final'].includes(user?.rol) && (
                   <button
                     onClick={() => setShowModal(true)}
                     className="text-xs font-bold text-white px-4 py-2 rounded-lg transition-all hover:opacity-90 flex items-center gap-1.5 shadow-sm"

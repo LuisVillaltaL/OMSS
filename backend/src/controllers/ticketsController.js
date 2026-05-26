@@ -222,6 +222,40 @@ const crear = async (req, res, next) => {
     const { id, numero } = result.rows[0];
     const codigo = ticketCodigo(numero);
 
+    // Manejar adjunto de imagen si viene en base64
+    const { imagen } = req.body;
+    if (imagen) {
+      const matches = imagen.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, 'base64');
+        
+        const crypto = require('crypto');
+        const fs = require('fs');
+        const path = require('path');
+        
+        const extension = mimeType.split('/')[1] || 'jpg';
+        const filename = `${crypto.randomBytes(16).toString('hex')}.${extension}`;
+        
+        const uploadDir = path.join(__dirname, '../../uploads');
+        if (!fs.existsSync(uploadDir)) {
+          fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        
+        const filepath = path.join(uploadDir, filename);
+        fs.writeFileSync(filepath, buffer);
+        
+        const ruta = `uploads/${filename}`;
+        
+        await client.query(
+          `INSERT INTO ticket_adjuntos (ticket_id, subido_por, nombre, ruta, mime_type, tamano_kb)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [id, req.user.id, filename, ruta, mimeType, Math.round(buffer.length / 1024)]
+        );
+      }
+    }
+
     // Log de auditoría
     await logAuditoria(client, {
       ticketId: id, usuarioId: req.user.id,

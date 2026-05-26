@@ -23,4 +23,17 @@ router.post('/',
   c.crear
 );
 
+router.put('/:id',
+  [
+    body('codigo').trim().isLength({ min: 3, max: 30 }).withMessage('Código de activo requerido'),
+    body('nombre').trim().isLength({ min: 3, max: 150 }).withMessage('Nombre descriptivo requerido'),
+    body('tipo').isIn(['laptop','desktop','servidor','impresora','switch','router','ups','monitor','telefono_ip','otro']).withMessage('Tipo de activo no parametrizado'),
+    body('estado').isIn(['operativo','mantenimiento','dado_de_baja','extraviado']).withMessage('Estado inválido'),
+    body('departamento_id').optional({ checkFalsy: true }).isUUID().withMessage('departamento_id debe ser UUID'),
+    body('asignado_a').optional({ checkFalsy: true }).isUUID().withMessage('asignado_a debe ser UUID'),
+  ],
+  validate,
+  c.actualizar
+);
+
 module.exports = router;

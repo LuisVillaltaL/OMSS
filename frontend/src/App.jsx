@@ -15,7 +15,10 @@ function PrivateRoute({ children, roles = [], modulo }) {
   if (!user) return <Navigate to="/login" replace />;
   if (roles.length && !roles.includes(user.rol)) return <Navigate to="/unauthorized" replace />;
   if (modulo && (!user.modulos_permitidos || !user.modulos_permitidos.includes(modulo))) {
-    return <Navigate to="/unauthorized" replace />;
+    // El rol usuario_final siempre tiene permitido el módulo de tickets
+    if (!(user.rol === 'usuario_final' && modulo === 'tickets')) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
   return children;
 }
@@ -80,7 +83,14 @@ export default function App() {
           
           {/* Módulo de Tickets Premium */}
           <Route path="/tickets" element={
-            <PrivateRoute roles={['admin','tecnico_l1','tecnico_l2']} modulo="tickets">
+            <PrivateRoute roles={['admin','tecnico_l1','tecnico_l2','usuario_final']} modulo="tickets">
+              <Tickets />
+            </PrivateRoute>
+          } />
+
+          {/* Módulo de Tickets para el Usuario Final */}
+          <Route path="/mis-tickets" element={
+            <PrivateRoute roles={['admin','tecnico_l1','tecnico_l2','usuario_final']} modulo="tickets">
               <Tickets />
             </PrivateRoute>
           } />

@@ -32,6 +32,9 @@ app.use(rateLimit({
 app.use(express.json({ limit: '10mb' }));       // RF-1.7: adjuntos hasta 10 MB
 app.use(express.urlencoded({ extended: true }));
 
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 // ── Log de peticiones en desarrollo ───────────────────────────
 if (nodeEnv === 'development') {
   app.use((req, _res, next) => {

@@ -83,13 +83,24 @@ const login = async (req, res, next) => {
     );
 
     // Generar tokens
+    let modulos = user.modulos_permitidos;
+    if (!modulos || modulos.length === 0) {
+      if (user.rol === 'admin') {
+        modulos = ['tickets', 'activos', 'empleados', 'compras', 'ventas'];
+      } else if (user.rol === 'tecnico_l1' || user.rol === 'tecnico_l2') {
+        modulos = ['tickets', 'activos'];
+      } else {
+        modulos = ['tickets'];
+      }
+    }
+
     const payload = {
       id:      user.id,
       correo:  user.correo,
       rol:     user.rol,
       perfil:  user.perfil,
       nombre:  `${user.nombre} ${user.apellido}`,
-      modulos_permitidos: user.modulos_permitidos,
+      modulos_permitidos: modulos,
     };
 
     const accessToken  = jwt.sign(payload, jwtSecret,  { expiresIn: jwtExpiry });
@@ -122,7 +133,7 @@ const login = async (req, res, next) => {
         correo:  user.correo,
         rol:     user.rol,
         perfil:  user.perfil,
-        modulos_permitidos: user.modulos_permitidos,
+        modulos_permitidos: modulos,
       },
     });
   } catch (err) {
@@ -161,9 +172,20 @@ const refresh = async (req, res, next) => {
     }
 
     const u = rows[0];
+    let modulos = u.modulos_permitidos;
+    if (!modulos || modulos.length === 0) {
+      if (u.rol === 'admin') {
+        modulos = ['tickets', 'activos', 'empleados', 'compras', 'ventas'];
+      } else if (u.rol === 'tecnico_l1' || u.rol === 'tecnico_l2') {
+        modulos = ['tickets', 'activos'];
+      } else {
+        modulos = ['tickets'];
+      }
+    }
+
     const newAccess = jwt.sign(
       { id: u.uid, correo: u.correo, rol: u.rol, perfil: u.perfil,
-        nombre: `${u.nombre} ${u.apellido}`, modulos_permitidos: u.modulos_permitidos },
+        nombre: `${u.nombre} ${u.apellido}`, modulos_permitidos: modulos },
       jwtSecret,
       { expiresIn: jwtExpiry }
     );
@@ -206,7 +228,20 @@ const me = async (req, res, next) => {
 
     if (!rows[0]) return res.status(404).json({ error: 'Usuario no encontrado' });
 
-    return res.json(rows[0]);
+    const u = rows[0];
+    let modulos = u.modulos_permitidos;
+    if (!modulos || modulos.length === 0) {
+      if (u.rol === 'admin') {
+        modulos = ['tickets', 'activos', 'empleados', 'compras', 'ventas'];
+      } else if (u.rol === 'tecnico_l1' || u.rol === 'tecnico_l2') {
+        modulos = ['tickets', 'activos'];
+      } else {
+        modulos = ['tickets'];
+      }
+    }
+    u.modulos_permitidos = modulos;
+
+    return res.json(u);
   } catch (err) {
     next(err);
   }

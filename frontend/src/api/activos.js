@@ -9,3 +9,6 @@ export const crearActivo = data =>
 
 export const getFormulariosActivos = () =>
   api.get('/activos/formularios').then(r => r.data);
+
+export const actualizarActivo = (id, data) =>
+  api.put(`/activos/${id}`, data).then(r => r.data);
