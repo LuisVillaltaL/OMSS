@@ -12,7 +12,9 @@ const { port, frontendUrl, nodeEnv } = require('./config/env');
 const app = express();
 
 // ── Seguridad ──────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 app.use(cors({
   origin:      frontendUrl,
   credentials: true,

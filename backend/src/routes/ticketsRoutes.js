@@ -11,6 +11,10 @@ router.use(auth());
 // esta ruta va ANTES de /:id para no ser capturada por el param
 router.get('/catalogo', c.catalogo);
 
+// ── GET /api/tickets/adjuntos/:filename/download ───────────────
+// Sirve el archivo con su nombre original vía Content-Disposition
+router.get('/adjuntos/:filename/download', c.descargarAdjunto);
+
 // ── GET /api/tickets ───────────────────────────────────────────
 router.get('/',
   [
@@ -53,7 +57,7 @@ router.patch('/:id',
 // ── POST /api/tickets/:id/notas ───────────────────────────────
 router.post('/:id/notas',
   param('id').isUUID(),
-  body('contenido').trim().isLength({ min: 1 }).withMessage('La nota no puede estar vacía'),
+  body('contenido').optional({ checkFalsy: true }).trim().isLength({ max: 10000 }).withMessage('Contenido demasiado largo'),
   validate,
   c.agregarNota
 );

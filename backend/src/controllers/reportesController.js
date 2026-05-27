@@ -35,14 +35,14 @@ const obtenerDashboard = async (req, res, next) => {
     const sqlKpis = `
       SELECT 
         COUNT(*) AS total,
-        COUNT(CASE WHEN estado IN ('abierto', 'en_progreso', 'escalado') THEN 1 END) AS activos,
-        COUNT(CASE WHEN estado = 'resuelto' THEN 1 END) AS resueltos,
-        COUNT(CASE WHEN estado = 'cerrado' THEN 1 END) AS cerrados,
-        COUNT(CASE WHEN sla_estado = 'en_tiempo' OR (sla_estado IS NULL AND estado = 'cerrado') THEN 1 END) AS sla_cumplido,
-        COUNT(CASE WHEN sla_estado = 'vencido' THEN 1 END) AS sla_vencido,
-        AVG(CASE WHEN resuelto_en IS NOT NULL THEN EXTRACT(EPOCH FROM (resuelto_en - creado_en)) / 3600 END) AS avg_mttr_h
-      FROM tickets
-      WHERE creado_en >= $1 AND creado_en <= $2
+        COUNT(CASE WHEN t.estado IN ('abierto', 'en_progreso', 'escalado') THEN 1 END) AS activos,
+        COUNT(CASE WHEN t.estado = 'resuelto' THEN 1 END) AS resueltos,
+        COUNT(CASE WHEN t.estado = 'cerrado' THEN 1 END) AS cerrados,
+        COUNT(CASE WHEN calcular_sla_estado(t) = 'en_tiempo' OR (calcular_sla_estado(t) IS NULL AND t.estado = 'cerrado') THEN 1 END) AS sla_cumplido,
+        COUNT(CASE WHEN calcular_sla_estado(t) = 'vencido' THEN 1 END) AS sla_vencido,
+        AVG(CASE WHEN t.resuelto_en IS NOT NULL THEN EXTRACT(EPOCH FROM (t.resuelto_en - t.creado_en)) / 3600 END) AS avg_mttr_h
+      FROM tickets t
+      WHERE t.creado_en >= $1 AND t.creado_en <= $2
     `;
 
     const kpisActual = (await queryPeriodo(sqlKpis, [inicioCur, finCur]))[0];
@@ -152,7 +152,7 @@ const obtenerDashboard = async (req, res, next) => {
          u.perfil,
          COUNT(CASE WHEN t.estado IN ('resuelto', 'cerrado') THEN 1 END) AS resueltos,
          COUNT(CASE WHEN t.estado IN ('abierto', 'en_progreso', 'escalado') THEN 1 END) AS activos,
-         COUNT(CASE WHEN t.sla_estado = 'vencido' THEN 1 END) AS vencidos_sla
+         COUNT(CASE WHEN calcular_sla_estado(t) = 'vencido' THEN 1 END) AS vencidos_sla
        FROM tickets t
        JOIN usuarios u ON t.asignado_a = u.id
        WHERE t.creado_en >= $1 AND t.creado_en <= $2

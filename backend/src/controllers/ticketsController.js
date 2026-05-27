@@ -49,7 +49,7 @@ const listar = async (req, res, next) => {
     if (prioridad)    { conds.push(`t.prioridad = $${p++}`);    params.push(prioridad); }
     if (asignado_a)   { conds.push(`t.asignado_a = $${p++}`);   params.push(asignado_a); }
     if (categoria_id) { conds.push(`t.categoria_id = $${p++}`); params.push(categoria_id); }
-    if (sla_estado)   { conds.push(`t.sla_estado = $${p++}`);   params.push(sla_estado); }
+    if (sla_estado)   { conds.push(`calcular_sla_estado(t) = $${p++}`); params.push(sla_estado); }
     if (q) {
       conds.push(`(t.titulo ILIKE $${p} OR ticket_codigo(t.numero) ILIKE $${p})`);
       params.push(`%${q}%`); p++;
@@ -67,7 +67,7 @@ const listar = async (req, res, next) => {
             t.prioridad,
             t.estado,
             t.canal,
-            t.sla_estado,
+            calcular_sla_estado(t)               AS sla_estado,
             t.sla_vence_en,
             t.sla_pausa_total,
             t.sla_pausado_en,
@@ -120,9 +120,11 @@ const obtener = async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT
           t.*,
+          calcular_sla_estado(t)               AS sla_estado,
           ticket_codigo(t.numero)              AS codigo,
           CONCAT(ur.nombre,' ',ur.apellido)    AS reportado_por_nombre,
           ur.correo                            AS reportado_por_correo,
+          ur.rol                               AS reportado_por_rol,
           CONCAT(ut.nombre,' ',ut.apellido)    AS asignado_a_nombre,
           ut.perfil                            AS asignado_perfil,
           c.nombre                             AS categoria,
@@ -152,7 +154,7 @@ const obtener = async (req, res, next) => {
         `SELECT tn.*, CONCAT(u.nombre,' ',u.apellido) AS autor_nombre, u.rol AS autor_rol
          FROM ticket_notas tn
          JOIN usuarios u ON tn.autor_id = u.id
-         WHERE tn.ticket_id = $1
+         WHERE tn.ticket_id = $1 ${req.user.rol === 'usuario_final' ? 'AND tn.es_interna = false' : ''}
          ORDER BY tn.creado_en`,
         [req.params.id]
       ),
@@ -222,37 +224,58 @@ const crear = async (req, res, next) => {
     const { id, numero } = result.rows[0];
     const codigo = ticketCodigo(numero);
 
-    // Manejar adjunto de imagen si viene en base64
-    const { imagen } = req.body;
+    // Manejar adjuntos si viene en base64 (soporta archivo único o múltiples en array "archivos")
+    const { imagen, imagenNombre, archivos } = req.body;
+    
+    // Lista temporal para procesar todos los archivos a subir
+    const toUpload = [];
     if (imagen) {
-      const matches = imagen.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-      if (matches && matches.length === 3) {
-        const mimeType = matches[1];
-        const base64Data = matches[2];
-        const buffer = Buffer.from(base64Data, 'base64');
-        
-        const crypto = require('crypto');
-        const fs = require('fs');
-        const path = require('path');
-        
-        const extension = mimeType.split('/')[1] || 'jpg';
-        const filename = `${crypto.randomBytes(16).toString('hex')}.${extension}`;
-        
-        const uploadDir = path.join(__dirname, '../../uploads');
-        if (!fs.existsSync(uploadDir)) {
-          fs.mkdirSync(uploadDir, { recursive: true });
+      toUpload.push({ nombre: imagenNombre || 'adjunto', base64: imagen });
+    }
+    if (archivos && Array.isArray(archivos)) {
+      toUpload.push(...archivos);
+    }
+
+    for (const f of toUpload) {
+      if (f.base64) {
+        const matches = f.base64.match(/^data:([A-Za-z0-9-+.\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          const crypto = require('crypto');
+          const fs = require('fs');
+          const path = require('path');
+          
+          const extension = mimeType.split('/')[1] || 'jpg';
+          let cleanExt = extension;
+          if (cleanExt.includes('.')) cleanExt = cleanExt.split('.').pop();
+          else if (cleanExt.includes('-')) cleanExt = cleanExt.split('-').pop();
+          
+          if (mimeType.includes('word') || mimeType.includes('document')) cleanExt = 'docx';
+          else if (mimeType.includes('sheet') || mimeType.includes('excel')) cleanExt = 'xlsx';
+          else if (mimeType.includes('pdf')) cleanExt = 'pdf';
+          
+          const filename = `${crypto.randomBytes(16).toString('hex')}.${cleanExt}`;
+          
+          const uploadDir = path.join(__dirname, '../../uploads');
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          
+          const filepath = path.join(uploadDir, filename);
+          fs.writeFileSync(filepath, buffer);
+          
+          const ruta = `uploads/${filename}`;
+          const finalNombre = f.nombre || filename;
+          
+          await client.query(
+            `INSERT INTO ticket_adjuntos (ticket_id, subido_por, nombre, ruta, mime_type, tamano_kb)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [id, req.user.id, finalNombre, ruta, mimeType, Math.round(buffer.length / 1024)]
+          );
         }
-        
-        const filepath = path.join(uploadDir, filename);
-        fs.writeFileSync(filepath, buffer);
-        
-        const ruta = `uploads/${filename}`;
-        
-        await client.query(
-          `INSERT INTO ticket_adjuntos (ticket_id, subido_por, nombre, ruta, mime_type, tamano_kb)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [id, req.user.id, filename, ruta, mimeType, Math.round(buffer.length / 1024)]
-        );
       }
     }
 
@@ -384,24 +407,88 @@ const actualizar = async (req, res, next) => {
 // POST /api/tickets/:id/notas (RF-1.7)
 // ══════════════════════════════════════════════════════════════
 const agregarNota = async (req, res, next) => {
+  const client = await pool.connect();
   try {
-    const { contenido, es_interna = false, tiempo_hh } = req.body;
+    await client.query('BEGIN');
 
-    const { rows } = await pool.query(
+    const { contenido, es_interna = false, tiempo_hh, archivo, archivoNombre, archivos } = req.body;
+
+    let esInternaFinal = es_interna;
+    if (req.user.rol === 'usuario_final') {
+      esInternaFinal = false;
+    }
+
+    const { rows } = await client.query(
       `INSERT INTO ticket_notas (ticket_id, autor_id, contenido, es_interna, tiempo_hh)
        VALUES ($1,$2,$3,$4,$5)
        RETURNING *`,
-      [req.params.id, req.user.id, contenido, es_interna, tiempo_hh || null]
+      [req.params.id, req.user.id, contenido, esInternaFinal, tiempo_hh || null]
     );
 
-    await logAuditoria(pool, {
+    // Si vienen archivos adjuntos (soporta archivo único "archivo" o múltiples en array "archivos")
+    const toUploadReply = [];
+    if (archivo) {
+      toUploadReply.push({ nombre: archivoNombre || 'adjunto_nota', base64: archivo });
+    }
+    if (archivos && Array.isArray(archivos)) {
+      toUploadReply.push(...archivos);
+    }
+
+    for (const f of toUploadReply) {
+      if (f.base64) {
+        const matches = f.base64.match(/^data:([A-Za-z0-9-+.\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+          const buffer = Buffer.from(base64Data, 'base64');
+          
+          const crypto = require('crypto');
+          const fs = require('fs');
+          const path = require('path');
+          
+          const extension = mimeType.split('/')[1] || 'jpg';
+          let cleanExt = extension;
+          if (cleanExt.includes('.')) cleanExt = cleanExt.split('.').pop();
+          else if (cleanExt.includes('-')) cleanExt = cleanExt.split('-').pop();
+          
+          if (mimeType.includes('word') || mimeType.includes('document')) cleanExt = 'docx';
+          else if (mimeType.includes('sheet') || mimeType.includes('excel')) cleanExt = 'xlsx';
+          else if (mimeType.includes('pdf')) cleanExt = 'pdf';
+          
+          const filename = `${crypto.randomBytes(16).toString('hex')}.${cleanExt}`;
+          const uploadDir = path.join(__dirname, '../../uploads');
+          if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+          }
+          
+          const filepath = path.join(uploadDir, filename);
+          fs.writeFileSync(filepath, buffer);
+          
+          const ruta = `uploads/${filename}`;
+          
+          await client.query(
+            `INSERT INTO ticket_adjuntos (ticket_id, subido_por, nombre, ruta, mime_type, tamano_kb)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [req.params.id, req.user.id, f.nombre, ruta, mimeType, Math.round(buffer.length / 1024)]
+          );
+        }
+      }
+    }
+
+    await logAuditoria(client, {
       ticketId: req.params.id, usuarioId: req.user.id,
       usuarioNombre: req.user.nombre, usuarioRol: req.user.rol,
       accion: 'comentar', ip: req.ip,
     });
 
+    await client.query('COMMIT');
     res.status(201).json(rows[0]);
-  } catch (err) { next(err); }
+  } catch (err) {
+    await client.query('ROLLBACK');
+    next(err);
+  } finally {
+    client.release();
+  }
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -487,6 +574,43 @@ const reabrir = async (req, res, next) => {
 };
 
 // ══════════════════════════════════════════════════════════════
+// GET /api/tickets/adjuntos/:filename/download — descarga con nombre original
+// ══════════════════════════════════════════════════════════════
+const descargarAdjunto = async (req, res, next) => {
+  try {
+    const { filename } = req.params;
+    const path = require('path');
+    const fs = require('fs');
+
+    // Buscar el adjunto en la base de datos por su ruta (que incluye el hash)
+    const { rows } = await pool.query(
+      `SELECT nombre, ruta, mime_type FROM ticket_adjuntos WHERE ruta = $1 LIMIT 1`,
+      [`uploads/${filename}`]
+    );
+
+    if (!rows[0]) {
+      return res.status(404).json({ error: 'Archivo no encontrado' });
+    }
+
+    const adjunto = rows[0];
+    const filepath = path.join(__dirname, '../../uploads', filename);
+
+    if (!fs.existsSync(filepath)) {
+      return res.status(404).json({ error: 'El archivo físico no existe en el servidor' });
+    }
+
+    // Sanitize filename to avoid header injection
+    const safeNombre = adjunto.nombre.replace(/["\\]/g, '_');
+
+    res.setHeader('Content-Disposition', `attachment; filename="${safeNombre}"`);
+    if (adjunto.mime_type) {
+      res.setHeader('Content-Type', adjunto.mime_type);
+    }
+    res.sendFile(filepath);
+  } catch (err) { next(err); }
+};
+
+// ══════════════════════════════════════════════════════════════
 // GET /api/tickets/catalogo — categorías y usuarios para formulario
 // ══════════════════════════════════════════════════════════════
 const catalogo = async (req, res, next) => {
@@ -514,4 +638,4 @@ const catalogo = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { listar, obtener, crear, actualizar, agregarNota, escalar, reabrir, catalogo };
+module.exports = { listar, obtener, crear, actualizar, agregarNota, escalar, reabrir, catalogo, descargarAdjunto };
