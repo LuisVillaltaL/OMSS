@@ -56,8 +56,8 @@ export default function Login() {
     if (result.ok) {
       const destinos = {
         admin: '/dashboard',
-        tecnico_l1: '/tickets',
-        tecnico_l2: '/tickets',
+        tecnico_l1: '/dashboard',
+        tecnico_l2: '/dashboard',
         usuario_final: '/mis-tickets',
       };
       navigate(destinos[result.user.rol] || '/dashboard');

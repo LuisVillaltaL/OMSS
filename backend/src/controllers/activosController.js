@@ -19,7 +19,8 @@ const listar = async (req, res, next) => {
     
     const queryStr = `
       SELECT id, codigo, nombre, tipo, marca, modelo, numero_serie,
-             estado, ubicacion, fecha_garantia, departamento,
+             estado, ubicacion, fecha_compra, fecha_garantia, costo_adq, notas,
+             departamento_id, asignado_a, departamento,
              asignado_a_nombre, asignado_a_correo, total_tickets
       FROM v_activos
       ${where}
@@ -65,6 +66,48 @@ const crear = async (req, res, next) => {
   }
 };
 
+// ── Actualizar activo por ID ──────────────────────────────────
+const actualizar = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const {
+      codigo, nombre, tipo, marca, modelo, numero_serie,
+      estado, fecha_compra, fecha_garantia, costo_adq,
+      ubicacion, departamento_id, asignado_a, notas
+    } = req.body;
+
+    const queryStr = `
+      UPDATE activos
+      SET codigo = $1, nombre = $2, tipo = $3, marca = $4, modelo = $5,
+          numero_serie = $6, estado = $7, fecha_compra = $8, fecha_garantia = $9,
+          costo_adq = $10, ubicacion = $11, departamento_id = $12, asignado_a = $13,
+          notas = $14
+      WHERE id = $15
+      RETURNING id, codigo, nombre
+    `;
+
+    const valores = [
+      codigo, nombre, tipo, marca || null, modelo || null, numero_serie || null,
+      estado, fecha_compra || null, fecha_garantia || null, costo_adq || null,
+      ubicacion || null, departamento_id || null, asignado_a || null, notas || null,
+      id
+    ];
+
+    const { rows } = await pool.query(queryStr, valores);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Activo no encontrado' });
+    }
+
+    res.json({ ok: true, activo: rows[0] });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(400).json({ error: 'El código de activo o número de serie ya existe en la base de datos' });
+    }
+    next(err);
+  }
+};
+
 // ── Catálogos auxiliares (Departamentos y Custodios) ────────────
 const formularios = async (req, res, next) => {
   try {
@@ -79,4 +122,4 @@ const formularios = async (req, res, next) => {
   } catch (err) { next(err); }
 };
 
-module.exports = { listar, crear, formularios };
+module.exports = { listar, crear, formularios, actualizar };

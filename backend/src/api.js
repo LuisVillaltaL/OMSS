@@ -12,7 +12,9 @@ const { port, frontendUrl, nodeEnv } = require('./config/env');
 const app = express();
 
 // ── Seguridad ──────────────────────────────────────────────────
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 app.use(cors({
   origin:      frontendUrl,
   credentials: true,
@@ -31,6 +33,9 @@ app.use(rateLimit({
 // ── Body parser ────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));       // RF-1.7: adjuntos hasta 10 MB
 app.use(express.urlencoded({ extended: true }));
+
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // ── Log de peticiones en desarrollo ───────────────────────────
 if (nodeEnv === 'development') {

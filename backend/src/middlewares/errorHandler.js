@@ -1,5 +1,5 @@
 const errorHandler = (err, req, res, next) => {
-  console.error('💥 Error no manejado:', err.message);
+  console.error('Error no manejado:', err.message);
 
   // Errores PostgreSQL
   if (err.code === '23505') {  // unique_violation
@@ -14,8 +14,14 @@ const errorHandler = (err, req, res, next) => {
       detalle: err.detail || 'El registro referenciado no existe',
     });
   }
-  if (err.code === '22P02') {  // invalid_text_representation (UUID inválido)
-    return res.status(400).json({ error: 'ID con formato inválido' });
+  if (err.code === '22P02') {  // invalid_text_representation
+    if (err.message && err.message.toLowerCase().includes('uuid')) {
+      return res.status(400).json({ error: 'ID con formato inválido' });
+    }
+    return res.status(400).json({
+      error: 'Sintaxis de entrada inválida',
+      detalle: err.message
+    });
   }
 
   // Error de JWT (seguridad)
